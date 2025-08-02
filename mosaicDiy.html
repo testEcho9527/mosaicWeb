@@ -1,0 +1,1378 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片马赛克处理器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 30px;
+        }
+
+        .upload-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .upload-btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 30px;
+            padding: 25px;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 200px;
+        }
+
+        .control-group label {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 1.1em;
+        }
+
+        .slider {
+            width: 180px;
+            height: 8px;
+            border-radius: 4px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+            margin-bottom: 10px;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+        }
+
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+        }
+
+        .value-display {
+            font-size: 1.1em;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .canvas-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            margin: 30px 0;
+            position: relative;
+            gap: 20px;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            border: 3px solid #667eea;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            max-height: 600px;
+            overflow: auto;
+        }
+
+        #canvas,
+        #maskCanvas {
+            display: block;
+            transition: transform 0.2s ease;
+        }
+
+        #maskCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            opacity: 0.6;
+            mix-blend-mode: multiply;
+        }
+
+        .drawing-mode #maskCanvas {
+            pointer-events: auto;
+            cursor: none;
+        }
+
+        .brush-cursor {
+            position: fixed;
+            border: 2px solid #667eea;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 1000;
+            background: rgba(102, 126, 234, 0.2);
+            transform: translate(-50%, -50%);
+            display: none;
+            transition: all 0.1s ease;
+        }
+
+        .zoom-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .zoom-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .zoom-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .zoom-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .zoom-info {
+            font-size: 0.9em;
+            color: #667eea;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .status {
+            padding: 10px 20px;
+            border-radius: 25px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+
+        .status.success {
+            background: rgba(76, 175, 80, 0.1);
+            color: #4CAF50;
+            border: 1px solid rgba(76, 175, 80, 0.3);
+        }
+
+        .status.error {
+            background: rgba(244, 67, 54, 0.1);
+            color: #F44336;
+            border: 1px solid rgba(244, 67, 54, 0.3);
+        }
+
+        .status.info {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .dragging {
+            cursor: grab !important;
+        }
+
+        .dragging:active {
+            cursor: grabbing !important;
+        }
+
+        .image-info {
+            text-align: center;
+            color: #667eea;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+
+        .save-options {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .quality-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .performance-info {
+            text-align: center;
+            color: #667eea;
+            font-size: 0.85em;
+            margin-top: 5px;
+            opacity: 0.8;
+        }
+
+        .preview-mode-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(102, 126, 234, 0.9);
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: bold;
+            display: none;
+        }
+
+        .preview-active .preview-mode-indicator {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .btn {
+                width: 200px;
+            }
+
+            .canvas-container {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 图片马赛克处理器</h1>
+            <p>上传图片，涂抹区域，实时预览马赛克效果</p>
+        </div>
+
+        <div class="main-content">
+            <div class="upload-section">
+                <input type="file" id="imageInput" accept="image/*" style="display: none;">
+                <button class="upload-btn" onclick="document.getElementById('imageInput').click()">
+                    📁 选择图片
+                </button>
+                <div id="status" class="status info" style="display: none;">请选择一张图片开始处理</div>
+                <div id="imageInfo" class="image-info" style="display: none;"></div>
+                <div id="performanceInfo" class="performance-info" style="display: none;"></div>
+            </div>
+
+            <div class="controls">
+                <div class="control-group">
+                    <label for="brushSize">画笔大小</label>
+                    <input type="range" id="brushSize" class="slider" min="1" max="50" value="20">
+                    <span class="value-display" id="brushSizeValue">20px</span>
+                </div>
+
+                <div class="control-group">
+                    <label for="pathSmoothness">路径平滑度</label>
+                    <input type="range" id="pathSmoothness" class="slider" min="1" max="10" value="3">
+                    <span class="value-display" id="pathSmoothnessValue">中等</span>
+                </div>
+
+                <div class="control-group">
+                    <label for="mosaicSize">马赛克精细度</label>
+                    <input type="range" id="mosaicSize" class="slider" min="1" max="50" value="5">
+                    <span class="value-display" id="mosaicSizeValue">5px</span>
+                </div>
+
+                <div class="control-group">
+                    <label for="quality">保存质量</label>
+                    <input type="range" id="quality" class="slider" min="50" max="100" value="95">
+                    <span class="value-display" id="qualityValue">95%</span>
+                </div>
+
+                <div class="action-buttons">
+                    <div class="save-options">
+                        <button class="btn" id="drawBtn" disabled>🖌️ 涂抹模式</button>
+                        <button class="btn" id="applyBtn" disabled>✨ 应用马赛克</button>
+                        <button class="btn" id="clearBtn" disabled>🗑️ 清除涂抹</button>
+                        <button class="btn" id="saveBtn" disabled>💾 保存编辑后的图片</button>
+                        <button class="btn" id="saveOriginalBtn" disabled>📥 保存原图</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="canvas-container">
+                <div class="canvas-wrapper" id="canvasWrapper">
+                    <canvas id="canvas"></canvas>
+                    <canvas id="maskCanvas"></canvas>
+                    <div class="brush-cursor" id="brushCursor"></div>
+                    <div class="preview-mode-indicator">预览模式</div>
+                </div>
+
+                <div class="zoom-controls">
+                    <button class="zoom-btn" id="zoomInBtn" disabled title="放大">+</button>
+                    <button class="zoom-btn" id="zoomOutBtn" disabled title="缩小">-</button>
+                    <button class="zoom-btn" id="zoomResetBtn" disabled title="重置缩放">↻</button>
+                    <div class="zoom-info" id="zoomInfo">100%</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class MosaicEditor {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.maskCanvas = document.getElementById('maskCanvas');
+                this.maskCtx = this.maskCanvas.getContext('2d');
+                this.canvasWrapper = document.getElementById('canvasWrapper');
+                this.brushCursor = document.getElementById('brushCursor');
+
+                // 原始图片数据和尺寸
+                this.originalImage = null;
+                this.originalFile = null;
+                this.originalWidth = 0;
+                this.originalHeight = 0;
+                this.originalImageData = null;
+                this.currentImageData = null;
+                this.hasEdits = false;
+
+                // 显示尺寸和缩放
+                this.displayWidth = 0;
+                this.displayHeight = 0;
+                this.displayScale = 1;
+                this.maxDisplaySize = 800; // 最大显示尺寸
+
+                // 预览模式相关
+                this.isPreviewMode = false;
+                this.previewImageData = null;
+
+                // 性能优化相关
+                this.maskCache = new Map(); // 缓存已处理的马赛克块
+                this.throttleTimer = null;
+                this.batchProcessing = false;
+                this.pendingRegions = [];
+
+                // 分离真实遮罩数据和可视化
+                this.maskRegions = []; // 存储真实的遮罩区域数据
+                this.realMaskCanvas = document.createElement('canvas'); // 真实的遮罩数据
+                this.realMaskCtx = this.realMaskCanvas.getContext('2d');
+
+                this.isDrawing = false;
+                this.drawingMode = false;
+
+                // 路径平滑相关
+                this.lastDrawPoint = null; // 上一个绘制点
+                this.pathSmoothness = 3; // 路径平滑度
+
+                this.brushSize = 20;
+                this.mosaicSize = 5;
+                this.quality = 95;
+                this.zoomLevel = 1;
+                this.maxZoom = 3;
+                this.minZoom = 0.25;
+
+                this.isDragging = false;
+                this.dragStartX = 0;
+                this.dragStartY = 0;
+                this.scrollLeft = 0;
+                this.scrollTop = 0;
+
+                this.originalFileName = '';
+                this.originalFileExtension = '';
+
+                this.initEventListeners();
+                this.updateBrushCursor();
+                this.updateZoomDisplay();
+            }
+
+            initEventListeners() {
+                // 文件上传
+                document.getElementById('imageInput').addEventListener('change', (e) => {
+                    this.loadImage(e.target.files[0]);
+                });
+
+                // 控制滑块
+                const brushSizeSlider = document.getElementById('brushSize');
+                const pathSmoothnessSlider = document.getElementById('pathSmoothness');
+                const mosaicSizeSlider = document.getElementById('mosaicSize');
+                const qualitySlider = document.getElementById('quality');
+
+                brushSizeSlider.addEventListener('input', (e) => {
+                    this.brushSize = parseInt(e.target.value);
+                    document.getElementById('brushSizeValue').textContent = this.brushSize + 'px';
+                    this.updateBrushCursor();
+                });
+
+                pathSmoothnessSlider.addEventListener('input', (e) => {
+                    this.pathSmoothness = parseInt(e.target.value);
+                    const smoothnessTexts = ['最低', '很低', '较低', '中等', '较高', '很高', '最高', '超高', '极高', '完美'];
+                    document.getElementById('pathSmoothnessValue').textContent = smoothnessTexts[this.pathSmoothness - 1];
+                });
+
+                mosaicSizeSlider.addEventListener('input', (e) => {
+                    this.mosaicSize = parseInt(e.target.value);
+                    document.getElementById('mosaicSizeValue').textContent = this.mosaicSize + 'px';
+                    // 清除缓存，因为马赛克大小改变了
+                    this.maskCache.clear();
+                    // 如果在预览模式，立即更新预览
+                    if (this.isPreviewMode) {
+                        this.updatePreview();
+                    }
+                });
+
+                qualitySlider.addEventListener('input', (e) => {
+                    this.quality = parseInt(e.target.value);
+                    document.getElementById('qualityValue').textContent = this.quality + '%';
+                });
+
+                // 按钮事件 - 修复这里的事件绑定
+                document.getElementById('drawBtn').addEventListener('click', () => this.toggleDrawingMode());
+                document.getElementById('applyBtn').addEventListener('click', () => this.handleApplyButton());
+                document.getElementById('clearBtn').addEventListener('click', () => this.clearMask());
+                document.getElementById('saveBtn').addEventListener('click', () => this.saveImage());
+                document.getElementById('saveOriginalBtn').addEventListener('click', () => this.saveOriginalImage());
+
+                // 缩放按钮
+                document.getElementById('zoomInBtn').addEventListener('click', () => this.zoomIn());
+                document.getElementById('zoomOutBtn').addEventListener('click', () => this.zoomOut());
+                document.getElementById('zoomResetBtn').addEventListener('click', () => this.resetZoom());
+
+                // 画布绘制事件
+                this.maskCanvas.addEventListener('mousedown', (e) => this.startDrawing(e));
+                this.maskCanvas.addEventListener('mousemove', (e) => this.draw(e));
+                this.maskCanvas.addEventListener('mouseup', () => this.stopDrawing());
+                this.maskCanvas.addEventListener('mouseout', () => this.stopDrawing());
+                this.maskCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+                // 鼠标移动事件
+                this.maskCanvas.addEventListener('mousemove', (e) => this.updateCursorPosition(e));
+                this.maskCanvas.addEventListener('mouseenter', () => this.showBrushCursor());
+                this.maskCanvas.addEventListener('mouseleave', () => this.hideBrushCursor());
+
+                // 鼠标滚轮缩放
+                this.canvasWrapper.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    if (e.deltaY < 0) {
+                        this.zoomIn();
+                    } else {
+                        this.zoomOut();
+                    }
+                });
+
+                // 触摸事件支持
+                this.maskCanvas.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    const mouseEvent = new MouseEvent('mousedown', {
+                        clientX: touch.clientX,
+                        clientY: touch.clientY,
+                        button: 0
+                    });
+                    this.maskCanvas.dispatchEvent(mouseEvent);
+                });
+
+                this.maskCanvas.addEventListener('touchmove', (e) => {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    const mouseEvent = new MouseEvent('mousemove', {
+                        clientX: touch.clientX,
+                        clientY: touch.clientY
+                    });
+                    this.maskCanvas.dispatchEvent(mouseEvent);
+                });
+
+                this.maskCanvas.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    const mouseEvent = new MouseEvent('mouseup', {});
+                    this.maskCanvas.dispatchEvent(mouseEvent);
+                });
+
+                // 鼠标中键拖拽事件
+                this.canvasWrapper.addEventListener('mousedown', (e) => {
+                    if (e.button === 1) {
+                        e.preventDefault();
+                        this.startDragging(e);
+                    }
+                });
+
+                this.canvasWrapper.addEventListener('mousemove', (e) => {
+                    if (this.isDragging) {
+                        e.preventDefault();
+                        this.drag(e);
+                    }
+                });
+
+                this.canvasWrapper.addEventListener('mouseup', (e) => {
+                    if (e.button === 1) {
+                        this.stopDragging();
+                    }
+                });
+
+                this.canvasWrapper.addEventListener('mouseleave', () => {
+                    this.stopDragging();
+                });
+            }
+
+            // 新增：统一处理应用按钮的点击事件
+            handleApplyButton() {
+                if (this.isPreviewMode) {
+                    this.exitPreview();
+                } else {
+                    this.applyMosaic();
+                }
+            }
+
+            startDragging(e) {
+                this.isDragging = true;
+                this.dragStartX = e.clientX;
+                this.dragStartY = e.clientY;
+                this.scrollLeft = this.canvasWrapper.scrollLeft;
+                this.scrollTop = this.canvasWrapper.scrollTop;
+                this.canvasWrapper.classList.add('dragging');
+            }
+
+            drag(e) {
+                if (!this.isDragging) return;
+
+                const dx = e.clientX - this.dragStartX;
+                const dy = e.clientY - this.dragStartY;
+
+                this.canvasWrapper.scrollLeft = this.scrollLeft - dx;
+                this.canvasWrapper.scrollTop = this.scrollTop - dy;
+            }
+
+            stopDragging() {
+                this.isDragging = false;
+                this.canvasWrapper.classList.remove('dragging');
+            }
+
+            showStatus(message, type = 'info') {
+                const statusEl = document.getElementById('status');
+                statusEl.textContent = message;
+                statusEl.className = `status ${type}`;
+                statusEl.style.display = 'block';
+            }
+
+            // 计算合适的显示尺寸
+            calculateDisplaySize(originalWidth, originalHeight) {
+                if (originalWidth <= this.maxDisplaySize && originalHeight <= this.maxDisplaySize) {
+                    return {
+                        width: originalWidth,
+                        height: originalHeight,
+                        scale: 1
+                    };
+                }
+
+                const aspectRatio = originalWidth / originalHeight;
+                let displayWidth, displayHeight;
+
+                if (originalWidth > originalHeight) {
+                    displayWidth = this.maxDisplaySize;
+                    displayHeight = Math.round(this.maxDisplaySize / aspectRatio);
+                } else {
+                    displayHeight = this.maxDisplaySize;
+                    displayWidth = Math.round(this.maxDisplaySize * aspectRatio);
+                }
+
+                return {
+                    width: displayWidth,
+                    height: displayHeight,
+                    scale: displayWidth / originalWidth
+                };
+            }
+
+            loadImage(file) {
+                if (!file) return;
+
+                this.originalFile = file;
+                this.hasEdits = false;
+                this.isPreviewMode = false;
+                this.maskCache.clear();
+                this.canvasWrapper.classList.remove('preview-active');
+
+                this.originalFileName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+                this.originalFileExtension = file.name.substring(file.name.lastIndexOf('.')) || '.png';
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        this.originalImage = img;
+                        this.originalWidth = img.width;
+                        this.originalHeight = img.height;
+
+                        // 计算显示尺寸
+                        const displaySize = this.calculateDisplaySize(this.originalWidth, this.originalHeight);
+                        this.displayWidth = displaySize.width;
+                        this.displayHeight = displaySize.height;
+                        this.displayScale = displaySize.scale;
+
+                        // 设置画布为显示尺寸
+                        this.canvas.width = this.displayWidth;
+                        this.canvas.height = this.displayHeight;
+                        this.maskCanvas.width = this.displayWidth;
+                        this.maskCanvas.height = this.displayHeight;
+
+                        // 设置真实遮罩画布为显示尺寸
+                        this.realMaskCanvas.width = this.displayWidth;
+                        this.realMaskCanvas.height = this.displayHeight;
+
+                        // 绘制缩放后的图片到显示画布
+                        this.ctx.drawImage(img, 0, 0, this.displayWidth, this.displayHeight);
+
+                        // 保存原始图片数据（原始尺寸）
+                        const tempCanvas = document.createElement('canvas');
+                        const tempCtx = tempCanvas.getContext('2d');
+                        tempCanvas.width = this.originalWidth;
+                        tempCanvas.height = this.originalHeight;
+                        tempCtx.drawImage(img, 0, 0, this.originalWidth, this.originalHeight);
+                        this.originalImageData = tempCtx.getImageData(0, 0, this.originalWidth, this.originalHeight);
+
+                        // 保存当前显示的图片数据
+                        this.currentImageData = this.ctx.getImageData(0, 0, this.displayWidth, this.displayHeight);
+
+                        // 清除遮罩和遮罩区域记录
+                        this.maskCtx.clearRect(0, 0, this.displayWidth, this.displayHeight);
+                        this.realMaskCtx.clearRect(0, 0, this.displayWidth, this.displayHeight);
+                        this.maskRegions = [];
+
+                        // 重置路径跟踪
+                        this.lastDrawPoint = null;
+
+                        this.zoomLevel = 1;
+                        this.updateZoom();
+                        this.enableButtons();
+                        this.showImageInfo();
+
+                        // 重置按钮状态
+                        this.resetApplyButtonState();
+
+                        const isScaled = this.displayScale < 1;
+                        const scaleInfo = isScaled ? `，已缩放至 ${Math.round(this.displayScale * 100)}% 显示` : '';
+                        this.showStatus(`图片加载成功！${scaleInfo}未编辑时建议使用"保存原图"避免质量损失`, 'success');
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+
+            showImageInfo() {
+                const infoEl = document.getElementById('imageInfo');
+                const fileSizeKB = Math.round(this.originalFile.size / 1024);
+                infoEl.textContent = `原始分辨率: ${this.originalWidth} × ${this.originalHeight}, 文件大小: ${fileSizeKB}KB`;
+                infoEl.style.display = 'block';
+
+                const performanceInfoEl = document.getElementById('performanceInfo');
+                if (this.displayScale < 1) {
+                    performanceInfoEl.textContent = `编辑分辨率: ${this.displayWidth} × ${this.displayHeight} (${Math.round(this.displayScale * 100)}% 缩放，优化性能)`;
+                    performanceInfoEl.style.display = 'block';
+                } else {
+                    performanceInfoEl.style.display = 'none';
+                }
+            }
+
+            enableButtons() {
+                ['drawBtn', 'clearBtn', 'saveBtn', 'saveOriginalBtn', 'zoomInBtn', 'zoomOutBtn', 'zoomResetBtn'].forEach(id => {
+                    document.getElementById(id).disabled = false;
+                });
+            }
+
+            // 新增：重置应用按钮状态
+            resetApplyButtonState() {
+                const applyBtn = document.getElementById('applyBtn');
+                applyBtn.textContent = '✨ 应用马赛克';
+                applyBtn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+            }
+
+            zoomIn() {
+                if (this.zoomLevel < this.maxZoom) {
+                    this.zoomLevel = Math.min(this.maxZoom, this.zoomLevel + 0.25);
+                    this.updateZoom();
+                }
+            }
+
+            zoomOut() {
+                if (this.zoomLevel > this.minZoom) {
+                    this.zoomLevel = Math.max(this.minZoom, this.zoomLevel - 0.25);
+                    this.updateZoom();
+                }
+            }
+
+            resetZoom() {
+                this.zoomLevel = 1;
+                this.updateZoom();
+            }
+
+            updateZoom() {
+                this.canvas.style.transform = `scale(${this.zoomLevel})`;
+                this.maskCanvas.style.transform = `scale(${this.zoomLevel})`;
+                this.updateZoomDisplay();
+                this.updateBrushCursor();
+            }
+
+            updateZoomDisplay() {
+                document.getElementById('zoomInfo').textContent = Math.round(this.zoomLevel * 100) + '%';
+                document.getElementById('zoomInBtn').disabled = this.zoomLevel >= this.maxZoom;
+                document.getElementById('zoomOutBtn').disabled = this.zoomLevel <= this.minZoom;
+            }
+
+            toggleDrawingMode() {
+                this.drawingMode = !this.drawingMode;
+                const btn = document.getElementById('drawBtn');
+
+                if (this.drawingMode) {
+                    btn.textContent = '🛑 退出涂抹';
+                    btn.style.background = 'linear-gradient(135deg, #f44336 0%, #d32f2f 100%)';
+                    document.querySelector('.canvas-wrapper').classList.add('drawing-mode');
+                    this.showStatus('涂抹模式已开启，灰色区域表示已涂抹范围', 'info');
+                    document.getElementById('applyBtn').disabled = false;
+                } else {
+                    btn.textContent = '🖌️ 涂抹模式';
+                    btn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                    document.querySelector('.canvas-wrapper').classList.remove('drawing-mode');
+                    this.hideBrushCursor();
+                    this.showStatus('涂抹模式已关闭', 'info');
+                }
+                
+                // 重置路径跟踪
+                this.lastDrawPoint = null;
+            }
+
+            updateBrushCursor() {
+                const scaledSize = this.brushSize * this.zoomLevel;
+                this.brushCursor.style.width = scaledSize + 'px';
+                this.brushCursor.style.height = scaledSize + 'px';
+            }
+
+            updateCursorPosition(e) {
+                if (!this.drawingMode) return;
+                this.brushCursor.style.left = e.clientX + 'px';
+                this.brushCursor.style.top = e.clientY + 'px';
+            }
+
+            showBrushCursor() {
+                if (this.drawingMode) {
+                    this.brushCursor.style.display = 'block';
+                }
+            }
+
+            hideBrushCursor() {
+                this.brushCursor.style.display = 'none';
+            }
+
+            getMousePos(e) {
+                const rect = this.maskCanvas.getBoundingClientRect();
+                const scaleX = this.canvas.width / rect.width;
+                const scaleY = this.canvas.height / rect.height;
+
+                return {
+                    x: (e.clientX - rect.left) * scaleX,
+                    y: (e.clientY - rect.top) * scaleY
+                };
+            }
+
+            startDrawing(e) {
+                if (!this.drawingMode) return;
+                if (e.button !== 0) return;
+                
+                this.isDrawing = true;
+                this.hasEdits = true;
+                
+                const pos = this.getMousePos(e);
+                this.lastDrawPoint = pos;
+                
+                this.drawAtPosition(pos);
+            }
+
+            draw(e) {
+                if (!this.isDrawing || !this.drawingMode) return;
+
+                const currentPos = this.getMousePos(e);
+                this.updateCursorPosition(e);
+
+                if (this.lastDrawPoint) {
+                    // 使用路径平滑度来插值绘制
+                    this.drawSmoothPath(this.lastDrawPoint, currentPos);
+                } else {
+                    this.drawAtPosition(currentPos);
+                }
+
+                this.lastDrawPoint = currentPos;
+            }
+
+            // 新增：平滑路径绘制方法
+            drawSmoothPath(startPos, endPos) {
+                const distance = Math.sqrt(
+                    Math.pow(endPos.x - startPos.x, 2) + 
+                    Math.pow(endPos.y - startPos.y, 2)
+                );
+
+                // 根据路径平滑度和画笔大小计算插值点数量
+                // 平滑度越高，插值点越多，路径越连续
+                const brushRadius = this.brushSize / 2;
+                const maxStepSize = brushRadius / this.pathSmoothness;
+                const steps = Math.max(1, Math.ceil(distance / maxStepSize));
+
+                for (let i = 0; i <= steps; i++) {
+                    const t = i / steps;
+                    const interpolatedPos = {
+                        x: startPos.x + (endPos.x - startPos.x) * t,
+                        y: startPos.y + (endPos.y - startPos.y) * t
+                    };
+                    
+                    this.drawAtPosition(interpolatedPos);
+                }
+            }
+
+            // 新增：在指定位置绘制
+            drawAtPosition(pos) {
+                // 记录遮罩区域用于生成最终马赛克
+                this.maskRegions.push({
+                    x: pos.x,
+                    y: pos.y,
+                    radius: this.brushSize / 2
+                });
+
+                // 在真实遮罩画布上绘制（白色，用于后续马赛克处理）
+                this.realMaskCtx.globalCompositeOperation = 'source-over';
+                this.realMaskCtx.fillStyle = 'white';
+                this.realMaskCtx.beginPath();
+                this.realMaskCtx.arc(pos.x, pos.y, this.brushSize / 2, 0, 2 * Math.PI);
+                this.realMaskCtx.fill();
+
+                // 在可视化遮罩层绘制可视化提示
+                this.updateMaskVisualization();
+
+                // 如果在预览模式，实时更新马赛克效果
+                if (this.isPreviewMode) {
+                    // 节流处理，避免频繁计算马赛克
+                    if (this.throttleTimer) {
+                        clearTimeout(this.throttleTimer);
+                    }
+
+                    this.throttleTimer = setTimeout(() => {
+                        this.updatePreviewAtPosition(pos.x, pos.y, this.brushSize / 2);
+                    }, 16); // 约60fps
+                }
+            }
+
+            updateMaskVisualization() {
+                if (this.isPreviewMode) {
+                    // 预览模式下不显示灰色遮罩层，因为已经有马赛克效果了
+                    this.maskCtx.clearRect(0, 0, this.displayWidth, this.displayHeight);
+                    return;
+                }
+
+                // 清除之前的可视化
+                this.maskCtx.clearRect(0, 0, this.displayWidth, this.displayHeight);
+
+                // 绘制所有遮罩区域的可视化（不影响真实遮罩数据）
+                this.maskCtx.globalCompositeOperation = 'source-over';
+                this.maskCtx.fillStyle = 'rgba(0, 0, 0, 0.3)'; // 浅黑色，30%透明度
+
+                this.maskRegions.forEach(region => {
+                    this.maskCtx.beginPath();
+                    this.maskCtx.arc(region.x, region.y, region.radius, 0, 2 * Math.PI);
+                    this.maskCtx.fill();
+                });
+            }
+
+            updatePreviewAtPosition(centerX, centerY, radius) {
+                if (!this.isPreviewMode || !this.previewImageData) return;
+
+                const startX = Math.max(0, Math.floor(centerX - radius));
+                const startY = Math.max(0, Math.floor(centerY - radius));
+                const endX = Math.min(this.displayWidth, Math.ceil(centerX + radius));
+                const endY = Math.min(this.displayHeight, Math.ceil(centerY + radius));
+
+                // 使用显示分辨率的马赛克大小
+                const displayMosaicSize = Math.max(1, Math.round(this.mosaicSize * this.displayScale));
+
+                // 按马赛克块大小处理区域
+                for (let y = startY; y < endY; y += displayMosaicSize) {
+                    for (let x = startX; x < endX; x += displayMosaicSize) {
+                        const blockCenterX = x + displayMosaicSize / 2;
+                        const blockCenterY = y + displayMosaicSize / 2;
+                        const distance = Math.sqrt(
+                            Math.pow(blockCenterX - centerX, 2) +
+                            Math.pow(blockCenterY - centerY, 2)
+                        );
+
+                        if (distance <= radius) {
+                            this.applyMosaicToPreviewBlock(x, y, displayMosaicSize);
+                        }
+                    }
+                }
+
+                // 更新画布显示
+                this.ctx.putImageData(this.previewImageData, 0, 0);
+            }
+
+            applyMosaicToPreviewBlock(startX, startY, blockSize) {
+                let totalR = 0, totalG = 0, totalB = 0, count = 0;
+
+                // 从当前图片数据计算区域平均颜色
+                for (let y = startY; y < Math.min(startY + blockSize, this.displayHeight); y++) {
+                    for (let x = startX; x < Math.min(startX + blockSize, this.displayWidth); x++) {
+                        const index = (Math.floor(y) * this.displayWidth + Math.floor(x)) * 4;
+                        totalR += this.currentImageData.data[index];
+                        totalG += this.currentImageData.data[index + 1];
+                        totalB += this.currentImageData.data[index + 2];
+                        count++;
+                    }
+                }
+
+                if (count === 0) return;
+
+                const avgR = Math.floor(totalR / count);
+                const avgG = Math.floor(totalG / count);
+                const avgB = Math.floor(totalB / count);
+
+                // 应用到预览数据
+                for (let y = startY; y < Math.min(startY + blockSize, this.displayHeight); y++) {
+                    for (let x = startX; x < Math.min(startX + blockSize, this.displayWidth); x++) {
+                        const index = (Math.floor(y) * this.displayWidth + Math.floor(x)) * 4;
+                        this.previewImageData.data[index] = avgR;
+                        this.previewImageData.data[index + 1] = avgG;
+                        this.previewImageData.data[index + 2] = avgB;
+                    }
+                }
+            }
+
+            stopDrawing() {
+                this.isDrawing = false;
+                // 不清除 lastDrawPoint，保持路径连续性直到下次开始绘制
+            }
+
+            applyMosaic() {
+                if (!this.hasEdits) {
+                    this.showStatus('没有涂抹区域需要处理', 'info');
+                    return;
+                }
+
+                // 切换到预览模式
+                this.isPreviewMode = true;
+                this.canvasWrapper.classList.add('preview-active');
+
+                this.showStatus('正在生成预览效果...', 'info');
+
+                // 使用 requestAnimationFrame 来避免阻塞UI
+                requestAnimationFrame(() => {
+                    this.generatePreview();
+                });
+            }
+
+            generatePreview() {
+                // 创建预览图片数据的副本
+                this.previewImageData = new ImageData(
+                    new Uint8ClampedArray(this.currentImageData.data),
+                    this.displayWidth,
+                    this.displayHeight
+                );
+
+                // 创建显示分辨率的遮罩数据
+                const maskData = this.realMaskCtx.getImageData(0, 0, this.displayWidth, this.displayHeight);
+
+                // 在预览数据上应用马赛克
+                this.applyMosaicToPreview(this.previewImageData, maskData);
+
+                // 更新画布显示
+                this.ctx.putImageData(this.previewImageData, 0, 0);
+
+                // 清除可视化遮罩层（因为现在直接显示马赛克效果）
+                this.maskCtx.clearRect(0, 0, this.displayWidth, this.displayHeight);
+
+                this.showStatus('预览模式已开启！您看到的就是最终保存效果', 'success');
+
+                // 更新按钮状态
+                this.setPreviewButtonState();
+            }
+
+            // 新增：设置预览模式下的按钮状态
+            setPreviewButtonState() {
+                const applyBtn = document.getElementById('applyBtn');
+                applyBtn.textContent = '🔄 退出预览';
+                applyBtn.style.background = 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)';
+            }
+
+            applyMosaicToPreview(imageData, maskData) {
+                const processedBlocks = new Set();
+                const displayMosaicSize = Math.max(1, Math.round(this.mosaicSize * this.displayScale));
+
+                for (let y = 0; y < this.displayHeight; y += displayMosaicSize) {
+                    for (let x = 0; x < this.displayWidth; x += displayMosaicSize) {
+                        const blockKey = `${x}_${y}`;
+                        if (processedBlocks.has(blockKey)) continue;
+
+                        // 检查这个块是否在遮罩区域内
+                        let shouldProcess = false;
+                        for (let by = y; by < Math.min(y + displayMosaicSize, this.displayHeight) && !shouldProcess; by++) {
+                            for (let bx = x; bx < Math.min(x + displayMosaicSize, this.displayWidth) && !shouldProcess; bx++) {
+                                const maskIndex = (by * this.displayWidth + bx) * 4;
+                                if (maskData.data[maskIndex] > 128) { // 白色区域表示需要马赛克
+                                    shouldProcess = true;
+                                }
+                            }
+                        }
+
+                        if (shouldProcess) {
+                            this.applyMosaicToImageDataBlock(imageData, x, y, displayMosaicSize);
+                            processedBlocks.add(blockKey);
+                        }
+                    }
+                }
+            }
+
+            applyMosaicToImageDataBlock(imageData, startX, startY, blockSize) {
+                let totalR = 0, totalG = 0, totalB = 0, count = 0;
+
+                // 计算区域平均颜色
+                for (let y = startY; y < Math.min(startY + blockSize, this.displayHeight); y++) {
+                    for (let x = startX; x < Math.min(startX + blockSize, this.displayWidth); x++) {
+                        const index = (y * this.displayWidth + x) * 4;
+                        totalR += this.currentImageData.data[index];
+                        totalG += this.currentImageData.data[index + 1];
+                        totalB += this.currentImageData.data[index + 2];
+                        count++;
+                    }
+                }
+
+                if (count === 0) return;
+
+                const avgR = Math.floor(totalR / count);
+                const avgG = Math.floor(totalG / count);
+                const avgB = Math.floor(totalB / count);
+
+                // 应用平均颜色
+                for (let y = startY; y < Math.min(startY + blockSize, this.displayHeight); y++) {
+                    for (let x = startX; x < Math.min(startX + blockSize, this.displayWidth); x++) {
+                        const index = (y * this.displayWidth + x) * 4;
+                        imageData.data[index] = avgR;
+                        imageData.data[index + 1] = avgG;
+                        imageData.data[index + 2] = avgB;
+                    }
+                }
+            }
+
+            exitPreview() {
+                this.isPreviewMode = false;
+                this.canvasWrapper.classList.remove('preview-active');
+
+                // 恢复原始显示
+                this.ctx.putImageData(this.currentImageData, 0, 0);
+
+                // 恢复遮罩可视化
+                this.updateMaskVisualization();
+
+                // 恢复按钮状态
+                this.resetApplyButtonState();
+
+                this.showStatus('已退出预览模式', 'info');
+            }
+
+            updatePreview() {
+                if (!this.isPreviewMode) return;
+
+                // 重新生成完整预览
+                this.generatePreview();
+            }
+
+            clearMask() {
+                this.maskCtx.clearRect(0, 0, this.displayWidth, this.displayHeight);
+                this.realMaskCtx.clearRect(0, 0, this.displayWidth, this.displayHeight);
+                this.maskCache.clear();
+                this.maskRegions = [];
+
+                // 如果在预览模式，先退出
+                if (this.isPreviewMode) {
+                    this.exitPreview();
+                }
+
+                // 恢复原始图片显示
+                this.ctx.drawImage(
+                    this.originalImage,
+                    0, 0, this.originalWidth, this.originalHeight,
+                    0, 0, this.displayWidth, this.displayHeight
+                );
+
+                this.currentImageData = this.ctx.getImageData(0, 0, this.displayWidth, this.displayHeight);
+                this.hasEdits = false;
+                this.previewImageData = null;
+                
+                // 重置路径跟踪
+                this.lastDrawPoint = null;
+
+                this.showStatus('涂抹已清除，图片已恢复原状', 'success');
+            }
+
+            saveOriginalImage() {
+                if (!this.originalFile) {
+                    this.showStatus('原始文件不可用', 'error');
+                    return;
+                }
+
+                const link = document.createElement('a');
+                const url = URL.createObjectURL(this.originalFile);
+
+                link.download = this.hasEdits ?
+                    this.originalFileName + '_original' + this.originalFileExtension :
+                    this.originalFileName + this.originalFileExtension;
+                link.href = url;
+                link.click();
+
+                setTimeout(() => URL.revokeObjectURL(url), 100);
+
+                const fileSizeKB = Math.round(this.originalFile.size / 1024);
+                this.showStatus(`原始图片已保存！无质量损失，文件大小: ${fileSizeKB}KB`, 'success');
+            }
+
+            saveImage() {
+                const tempCanvas = document.createElement('canvas');
+                const tempCtx = tempCanvas.getContext('2d');
+
+                tempCanvas.width = this.originalWidth;
+                tempCanvas.height = this.originalHeight;
+
+                if (this.hasEdits) {
+                    // 有编辑，生成高分辨率马赛克图片
+                    this.showStatus('正在生成高分辨率图片...', 'info');
+                    this.generateHighResolutionMosaic(tempCanvas, tempCtx);
+                } else {
+                    // 无编辑，直接绘制原始图片
+                    tempCtx.drawImage(this.originalImage, 0, 0, this.originalWidth, this.originalHeight);
+                    this.performSave(tempCanvas);
+                }
+            }
+
+            generateHighResolutionMosaic(canvas, ctx) {
+                // 绘制原始图片
+                ctx.drawImage(this.originalImage, 0, 0, this.originalWidth, this.originalHeight);
+                const imageData = ctx.getImageData(0, 0, this.originalWidth, this.originalHeight);
+
+                // 创建原始分辨率的遮罩
+                const tempMaskCanvas = document.createElement('canvas');
+                const tempMaskCtx = tempMaskCanvas.getContext('2d');
+                tempMaskCanvas.width = this.originalWidth;
+                tempMaskCanvas.height = this.originalHeight;
+
+                // 将显示分辨率的真实遮罩缩放到原始分辨率
+                tempMaskCtx.drawImage(
+                    this.realMaskCanvas,
+                    0, 0, this.displayWidth, this.displayHeight,
+                    0, 0, this.originalWidth, this.originalHeight
+                );
+
+                const maskData = tempMaskCtx.getImageData(0, 0, this.originalWidth, this.originalHeight);
+
+                // 在原始分辨率上应用马赛克
+                this.applyHighResolutionMosaicToImageData(imageData, maskData);
+
+                // 更新画布
+                ctx.putImageData(imageData, 0, 0);
+
+                // 保存
+                this.performSave(canvas);
+            }
+
+            applyHighResolutionMosaicToImageData(imageData, maskData) {
+                const processedBlocks = new Set();
+
+                for (let y = 0; y < this.originalHeight; y += this.mosaicSize) {
+                    for (let x = 0; x < this.originalWidth; x += this.mosaicSize) {
+                        const blockKey = `${x}_${y}`;
+                        if (processedBlocks.has(blockKey)) continue;
+
+                        // 检查这个块是否在遮罩区域内
+                        let shouldProcess = false;
+                        for (let by = y; by < Math.min(y + this.mosaicSize, this.originalHeight) && !shouldProcess; by++) {
+                            for (let bx = x; bx < Math.min(x + this.mosaicSize, this.originalWidth) && !shouldProcess; bx++) {
+                                const maskIndex = (by * this.originalWidth + bx) * 4;
+                                if (maskData.data[maskIndex] > 128) { // 白色区域表示需要马赛克
+                                    shouldProcess = true;
+                                }
+                            }
+                        }
+
+                        if (shouldProcess) {
+                            this.applyHighResMosaicToBlock(imageData, x, y, this.mosaicSize);
+                            processedBlocks.add(blockKey);
+                        }
+                    }
+                }
+            }
+
+            applyHighResMosaicToBlock(imageData, startX, startY, blockSize) {
+                let totalR = 0, totalG = 0, totalB = 0, count = 0;
+
+                // 计算区域平均颜色
+                for (let y = startY; y < Math.min(startY + blockSize, this.originalHeight); y++) {
+                    for (let x = startX; x < Math.min(startX + blockSize, this.originalWidth); x++) {
+                        const index = (y * this.originalWidth + x) * 4;
+                        totalR += imageData.data[index];
+                        totalG += imageData.data[index + 1];
+                        totalB += imageData.data[index + 2];
+                        count++;
+                    }
+                }
+
+                if (count === 0) return;
+
+                const avgR = Math.floor(totalR / count);
+                const avgG = Math.floor(totalG / count);
+                const avgB = Math.floor(totalB / count);
+
+                // 应用平均颜色
+                for (let y = startY; y < Math.min(startY + blockSize, this.originalHeight); y++) {
+                    for (let x = startX; x < Math.min(startX + blockSize, this.originalWidth); x++) {
+                        const index = (y * this.originalWidth + x) * 4;
+                        imageData.data[index] = avgR;
+                        imageData.data[index + 1] = avgG;
+                        imageData.data[index + 2] = avgB;
+                    }
+                }
+            }
+
+            performSave(canvas) {
+                const link = document.createElement('a');
+
+                const mimeType = this.originalFileExtension === '.jpg' || this.originalFileExtension === '.jpeg'
+                    ? 'image/jpeg' : 'image/png';
+                const fileExtension = this.originalFileExtension === '.jpg' || this.originalFileExtension === '.jpeg'
+                    ? '.jpg' : '.png';
+
+                const suffix = this.hasEdits ? '_mosaic' : '_copy';
+                link.download = this.originalFileName + suffix + fileExtension;
+
+                const qualityValue = this.quality / 100;
+                link.href = canvas.toDataURL(mimeType, qualityValue);
+                link.click();
+
+                const statusMsg = this.hasEdits ?
+                    `马赛克图片已保存！原始分辨率: ${this.originalWidth} × ${this.originalHeight}, 质量: ${this.quality}%` :
+                    `图片副本已保存！分辨率: ${this.originalWidth} × ${this.originalHeight}, 质量: ${this.quality}%（建议使用"保存原图"避免质量损失）`;
+
+                this.showStatus(statusMsg, 'success');
+            }
+        }
+
+        // 初始化应用
+        new MosaicEditor();
+    </script>
+</body>
+
+</html>
