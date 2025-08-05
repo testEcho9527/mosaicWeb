@@ -333,6 +333,28 @@
             display: none;
         }
 
+        .format-selector select {
+            padding: 8px 12px;
+            border-radius: 15px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .format-selector select:hover {
+            border-color: #764ba2;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .format-selector select:focus {
+            outline: none;
+            border-color: #764ba2;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+
         .preview-active .preview-mode-indicator {
             display: block;
         }
@@ -408,6 +430,18 @@
                         <button class="btn" id="drawBtn" disabled>🖌️ 涂抹模式</button>
                         <button class="btn" id="applyBtn" disabled>✨ 应用马赛克</button>
                         <button class="btn" id="clearBtn" disabled>🗑️ 清除涂抹</button>
+
+                        <!-- 在这里添加格式选择器 -->
+                        <div class="format-selector" style="display: flex; align-items: center; gap: 10px;">
+                            <label for="outputFormat" style="color: #667eea; font-weight: bold;">保存格式:</label>
+                            <select id="outputFormat"
+                                style="padding: 8px; border-radius: 15px; border: 2px solid #667eea; background: white; color: #667eea; font-weight: bold;">
+                                <option value="png">PNG (无损)</option>
+                                <option value="jpg">JPG (压缩)</option>
+                                <option value="webp">WebP (高效)</option>
+                            </select>
+                        </div>
+
                         <button class="btn" id="saveBtn" disabled>💾 保存编辑后的图片</button>
                         <button class="btn" id="saveOriginalBtn" disabled>📥 保存原图</button>
                     </div>
@@ -848,7 +882,7 @@
                     this.hideBrushCursor();
                     this.showStatus('涂抹模式已关闭', 'info');
                 }
-                
+
                 // 重置路径跟踪
                 this.lastDrawPoint = null;
             }
@@ -889,13 +923,13 @@
             startDrawing(e) {
                 if (!this.drawingMode) return;
                 if (e.button !== 0) return;
-                
+
                 this.isDrawing = true;
                 this.hasEdits = true;
-                
+
                 const pos = this.getMousePos(e);
                 this.lastDrawPoint = pos;
-                
+
                 this.drawAtPosition(pos);
             }
 
@@ -918,7 +952,7 @@
             // 新增：平滑路径绘制方法
             drawSmoothPath(startPos, endPos) {
                 const distance = Math.sqrt(
-                    Math.pow(endPos.x - startPos.x, 2) + 
+                    Math.pow(endPos.x - startPos.x, 2) +
                     Math.pow(endPos.y - startPos.y, 2)
                 );
 
@@ -934,7 +968,7 @@
                         x: startPos.x + (endPos.x - startPos.x) * t,
                         y: startPos.y + (endPos.y - startPos.y) * t
                     };
-                    
+
                     this.drawAtPosition(interpolatedPos);
                 }
             }
@@ -1213,7 +1247,7 @@
                 this.currentImageData = this.ctx.getImageData(0, 0, this.displayWidth, this.displayHeight);
                 this.hasEdits = false;
                 this.previewImageData = null;
-                
+
                 // 重置路径跟踪
                 this.lastDrawPoint = null;
 
@@ -1350,21 +1384,39 @@
             performSave(canvas) {
                 const link = document.createElement('a');
 
-                const mimeType = this.originalFileExtension === '.jpg' || this.originalFileExtension === '.jpeg'
-                    ? 'image/jpeg' : 'image/png';
-                const fileExtension = this.originalFileExtension === '.jpg' || this.originalFileExtension === '.jpeg'
-                    ? '.jpg' : '.png';
+                // 获取用户选择的格式
+                const selectedFormat = document.getElementById('outputFormat').value;
+
+                let mimeType, fileExtension, qualityValue;
+
+                switch (selectedFormat) {
+                    case 'jpg':
+                        mimeType = 'image/jpeg';
+                        fileExtension = '.jpg';
+                        qualityValue = this.quality / 100;
+                        break;
+                    case 'webp':
+                        mimeType = 'image/webp';
+                        fileExtension = '.webp';
+                        qualityValue = this.quality / 100;
+                        break;
+                    case 'png':
+                    default:
+                        mimeType = 'image/png';
+                        fileExtension = '.png';
+                        qualityValue = 1; // PNG不使用质量参数
+                        break;
+                }
 
                 const suffix = this.hasEdits ? '_mosaic' : '_copy';
                 link.download = this.originalFileName + suffix + fileExtension;
-
-                const qualityValue = this.quality / 100;
                 link.href = canvas.toDataURL(mimeType, qualityValue);
                 link.click();
 
+                const formatName = selectedFormat.toUpperCase();
                 const statusMsg = this.hasEdits ?
-                    `马赛克图片已保存！原始分辨率: ${this.originalWidth} × ${this.originalHeight}, 质量: ${this.quality}%` :
-                    `图片副本已保存！分辨率: ${this.originalWidth} × ${this.originalHeight}, 质量: ${this.quality}%（建议使用"保存原图"避免质量损失）`;
+                    `马赛克图片已保存为${formatName}格式！原始分辨率: ${this.originalWidth} × ${this.originalHeight}, 质量: ${this.quality}%` :
+                    `图片副本已保存为${formatName}格式！分辨率: ${this.originalWidth} × ${this.originalHeight}, 质量: ${this.quality}%（建议使用"保存原图"避免质量损失）`;
 
                 this.showStatus(statusMsg, 'success');
             }
