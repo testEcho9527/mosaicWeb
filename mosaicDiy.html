@@ -510,6 +510,10 @@
                 <button class="batch-upload-btn" onclick="document.getElementById('batchImageInput').click()">
                     ➕ 批量添加图片
                 </button>
+                <button class="batch-upload-btn" id="batchDeleteBtn"
+                    style="background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%); display: none;">
+                    🗑️ 删除选中图片
+                </button>
                 <div class="image-list" id="imageList">
                     <div style="text-align: center; color: #999; padding: 20px;">
                         暂无图片
@@ -801,6 +805,10 @@
                 document.getElementById('batchImageInput').addEventListener('change', (e) => {
                     this.handleBatchUpload(e.target.files);
                 });
+                // 批量删除事件
+                document.getElementById('batchDeleteBtn').addEventListener('click', () => {
+                    this.handleBatchDelete();
+                });
             }
 
             // 新增方法
@@ -844,6 +852,7 @@
                         this.selectedImages.delete(index);
                         item.classList.remove('selected');
                     }
+                    this.updateDeleteButtonVisibility();
                 });
 
                 // 创建文件名显示
@@ -879,6 +888,127 @@
                         }
                     });
                 }
+            }
+
+            // 更新删除按钮可见性
+            updateDeleteButtonVisibility() {
+                const deleteBtn = document.getElementById('batchDeleteBtn');
+                if (this.selectedImages.size > 0) {
+                    deleteBtn.style.display = 'block';
+                } else {
+                    deleteBtn.style.display = 'none';
+                }
+            }
+
+            // 处理批量删除
+            handleBatchDelete() {
+                if (this.selectedImages.size === 0) {
+                    this.showStatus('请先选择要删除的图片', 'info');
+                    return;
+                }
+
+                const selectedCount = this.selectedImages.size;
+
+                // 将选中的索引转为数组并排序（从大到小，避免删除时索引变化）
+                const selectedIndices = Array.from(this.selectedImages).sort((a, b) => b - a);
+
+                // 删除选中的图片
+                selectedIndices.forEach(index => {
+                    // 如果删除的是当前编辑的图片，清空编辑状态
+                    if (index === this.currentImageIndex) {
+                        this.clearCurrentImage();
+                    }
+
+                    // 从数组中删除
+                    this.imageFiles.splice(index, 1);
+
+                    // 从DOM中删除对应的item
+                    const imageList = document.getElementById('imageList');
+                    const items = imageList.querySelectorAll('.image-item');
+                    if (items[index]) {
+                        items[index].remove();
+                    }
+                });
+
+                // 重新索引剩余的图片项
+                this.reindexImageList();
+
+                // 清空选中状态
+                this.selectedImages.clear();
+                this.updateDeleteButtonVisibility();
+
+                this.showStatus(`已删除 ${selectedCount} 张图片`, 'success');
+
+                // 如果列表为空，显示提示
+                if (this.imageFiles.length === 0) {
+                    const imageList = document.getElementById('imageList');
+                    imageList.innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">暂无图片</div>';
+                }
+            }
+
+            // 重新索引图片列表
+            reindexImageList() {
+                const imageList = document.getElementById('imageList');
+                const items = imageList.querySelectorAll('.image-item');
+
+                items.forEach((item, newIndex) => {
+                    item.dataset.index = newIndex;
+
+                    // 重新绑定点击事件
+                    const checkbox = item.querySelector('input[type="checkbox"]');
+                    checkbox.replaceWith(checkbox.cloneNode(true));
+                    const newCheckbox = item.querySelector('input[type="checkbox"]');
+
+                    newCheckbox.addEventListener('change', (e) => {
+                        if (e.target.checked) {
+                            this.selectedImages.add(newIndex);
+                            item.classList.add('selected');
+                        } else {
+                            this.selectedImages.delete(newIndex);
+                            item.classList.remove('selected');
+                        }
+                        this.updateDeleteButtonVisibility();
+                    });
+
+                    // 重新绑定点击选择事件
+                    item.onclick = (e) => {
+                        if (e.target.type !== 'checkbox') {
+                            this.selectImageForEdit(newIndex);
+                        }
+                    };
+                });
+
+                // 重置当前图片索引
+                this.currentImageIndex = -1;
+            }
+
+            // 清空当前图片编辑状态
+            clearCurrentImage() {
+                this.canvas.width = 0;
+                this.canvas.height = 0;
+                this.maskCanvas.width = 0;
+                this.maskCanvas.height = 0;
+
+                this.originalImage = null;
+                this.originalFile = null;
+                this.hasEdits = false;
+                this.isPreviewMode = false;
+                this.currentImageIndex = -1;
+
+                // 隐藏信息显示
+                document.getElementById('imageInfo').style.display = 'none';
+                document.getElementById('performanceInfo').style.display = 'none';
+                document.getElementById('status').style.display = 'none';
+
+                // 禁用相关按钮
+                ['drawBtn', 'applyBtn', 'clearBtn', 'saveBtn', 'saveOriginalBtn', 'zoomInBtn', 'zoomOutBtn', 'zoomResetBtn'].forEach(id => {
+                    document.getElementById(id).disabled = true;
+                });
+
+                // 清空选中边框
+                document.querySelectorAll('.image-item').forEach(item => {
+                    item.style.border = 'none';
+                });
             }
 
             // 新增：统一处理应用按钮的点击事件
