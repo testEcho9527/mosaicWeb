@@ -16,14 +16,15 @@
             font-family: 'Microsoft YaHei', Arial, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding: 20px;
+            /* padding: 20px; */
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 100%;
+            /* max-width: 1200px; */
             margin: 0 auto;
             background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
+            /* border-radius: 20px; */
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
             overflow: hidden;
         }
@@ -48,6 +49,99 @@
 
         .main-content {
             padding: 30px;
+            display: flex;
+            gap: 30px;
+        }
+
+        /* 新增左侧面板样式 */
+        .left-panel {
+            width: 300px;
+            min-width: 300px;
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            border: 2px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .left-panel h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+            text-align: center;
+        }
+
+        .batch-upload-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-bottom: 15px;
+            font-size: 1em;
+            transition: all 0.3s ease;
+        }
+
+        .batch-upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .image-list {
+            max-height: 500px;
+            overflow-y: auto;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 10px;
+            padding: 10px;
+        }
+
+        .image-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            border-radius: 8px;
+            margin-bottom: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .image-item:hover {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .image-item.selected {
+            background: rgba(102, 126, 234, 0.2);
+            border: 1px solid #667eea;
+        }
+
+        .image-item input[type="checkbox"] {
+            margin-right: 8px;
+            transform: scale(1.2);
+        }
+
+        .image-thumbnail {
+            width: 40px;
+            height: 40px;
+            object-fit: cover;
+            border-radius: 5px;
+            margin-right: 10px;
+            border: 1px solid #ddd;
+        }
+
+        .image-name {
+            flex: 1;
+            font-size: 0.9em;
+            color: #333;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* 右侧内容区域 */
+        .right-content {
+            flex: 1;
+            min-width: 0;
         }
 
         .upload-section {
@@ -378,6 +472,25 @@
                 flex-direction: column;
                 align-items: center;
             }
+
+            .main-content {
+                flex-direction: column;
+            }
+
+            .left-panel {
+                width: 100%;
+                min-width: auto;
+                order: 2;
+                /* 移动端时左侧面板放在下方 */
+            }
+
+            .right-content {
+                order: 1;
+            }
+
+            .image-list {
+                max-height: 200px;
+            }
         }
     </style>
 </head>
@@ -390,77 +503,95 @@
         </div>
 
         <div class="main-content">
-            <div class="upload-section">
-                <input type="file" id="imageInput" accept="image/*" style="display: none;">
-                <button class="upload-btn" onclick="document.getElementById('imageInput').click()">
-                    📁 选择图片
+            <!-- 新增左侧面板 -->
+            <div class="left-panel">
+                <h3>📂 批量图片管理</h3>
+                <input type="file" id="batchImageInput" accept="image/*" multiple style="display: none;">
+                <button class="batch-upload-btn" onclick="document.getElementById('batchImageInput').click()">
+                    ➕ 批量添加图片
                 </button>
-                <div id="status" class="status info" style="display: none;">请选择一张图片开始处理</div>
-                <div id="imageInfo" class="image-info" style="display: none;"></div>
-                <div id="performanceInfo" class="performance-info" style="display: none;"></div>
-            </div>
-
-            <div class="controls">
-                <div class="control-group">
-                    <label for="brushSize">画笔大小</label>
-                    <input type="range" id="brushSize" class="slider" min="1" max="50" value="20">
-                    <span class="value-display" id="brushSizeValue">20px</span>
-                </div>
-
-                <div class="control-group">
-                    <label for="pathSmoothness">路径平滑度</label>
-                    <input type="range" id="pathSmoothness" class="slider" min="1" max="10" value="3">
-                    <span class="value-display" id="pathSmoothnessValue">中等</span>
-                </div>
-
-                <div class="control-group">
-                    <label for="mosaicSize">马赛克精细度</label>
-                    <input type="range" id="mosaicSize" class="slider" min="1" max="50" value="5">
-                    <span class="value-display" id="mosaicSizeValue">5px</span>
-                </div>
-
-                <div class="control-group">
-                    <label for="quality">保存质量</label>
-                    <input type="range" id="quality" class="slider" min="50" max="100" value="95">
-                    <span class="value-display" id="qualityValue">95%</span>
-                </div>
-
-                <div class="action-buttons">
-                    <div class="save-options">
-                        <button class="btn" id="drawBtn" disabled>🖌️ 涂抹模式</button>
-                        <button class="btn" id="applyBtn" disabled>✨ 应用马赛克</button>
-                        <button class="btn" id="clearBtn" disabled>🗑️ 清除涂抹</button>
-
-                        <!-- 在这里添加格式选择器 -->
-                        <div class="format-selector" style="display: flex; align-items: center; gap: 10px;">
-                            <label for="outputFormat" style="color: #667eea; font-weight: bold;">保存格式:</label>
-                            <select id="outputFormat"
-                                style="padding: 8px; border-radius: 15px; border: 2px solid #667eea; background: white; color: #667eea; font-weight: bold;">
-                                <option value="png">PNG (无损)</option>
-                                <option value="jpg">JPG (压缩)</option>
-                                <option value="webp">WebP (高效)</option>
-                            </select>
-                        </div>
-
-                        <button class="btn" id="saveBtn" disabled>💾 保存编辑后的图片</button>
-                        <button class="btn" id="saveOriginalBtn" disabled>📥 保存原图</button>
+                <div class="image-list" id="imageList">
+                    <div style="text-align: center; color: #999; padding: 20px;">
+                        暂无图片
                     </div>
                 </div>
             </div>
 
-            <div class="canvas-container">
-                <div class="canvas-wrapper" id="canvasWrapper">
-                    <canvas id="canvas"></canvas>
-                    <canvas id="maskCanvas"></canvas>
-                    <div class="brush-cursor" id="brushCursor"></div>
-                    <div class="preview-mode-indicator">预览模式</div>
+            <!-- 右侧原有内容 -->
+            <div class="right-content">
+                <!-- 将原来 main-content 内的所有内容移动到这里 -->
+                <div class="upload-section">
+                    <input type="file" id="imageInput" accept="image/*" style="display: none;">
+                    <button class="upload-btn" onclick="document.getElementById('imageInput').click()">
+                        📁 选择图片
+                    </button>
+                    <div id="status" class="status info" style="display: none;">请选择一张图片开始处理</div>
+                    <div id="imageInfo" class="image-info" style="display: none;"></div>
+                    <div id="performanceInfo" class="performance-info" style="display: none;"></div>
                 </div>
 
-                <div class="zoom-controls">
-                    <button class="zoom-btn" id="zoomInBtn" disabled title="放大">+</button>
-                    <button class="zoom-btn" id="zoomOutBtn" disabled title="缩小">-</button>
-                    <button class="zoom-btn" id="zoomResetBtn" disabled title="重置缩放">↻</button>
-                    <div class="zoom-info" id="zoomInfo">100%</div>
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="brushSize">画笔大小</label>
+                        <input type="range" id="brushSize" class="slider" min="1" max="50" value="20">
+                        <span class="value-display" id="brushSizeValue">20px</span>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="pathSmoothness">路径平滑度</label>
+                        <input type="range" id="pathSmoothness" class="slider" min="1" max="10" value="3">
+                        <span class="value-display" id="pathSmoothnessValue">中等</span>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="mosaicSize">马赛克精细度</label>
+                        <input type="range" id="mosaicSize" class="slider" min="1" max="50" value="5">
+                        <span class="value-display" id="mosaicSizeValue">5px</span>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="quality">保存质量</label>
+                        <input type="range" id="quality" class="slider" min="50" max="100" value="95">
+                        <span class="value-display" id="qualityValue">95%</span>
+                    </div>
+
+                    <div class="action-buttons">
+                        <div class="save-options">
+                            <button class="btn" id="drawBtn" disabled>🖌️ 涂抹模式</button>
+                            <button class="btn" id="applyBtn" disabled>✨ 应用马赛克</button>
+                            <button class="btn" id="clearBtn" disabled>🗑️ 清除涂抹</button>
+
+                            <!-- 在这里添加格式选择器 -->
+                            <div class="format-selector" style="display: flex; align-items: center; gap: 10px;">
+                                <label for="outputFormat" style="color: #667eea; font-weight: bold;">保存格式:</label>
+                                <select id="outputFormat"
+                                    style="padding: 8px; border-radius: 15px; border: 2px solid #667eea; background: white; color: #667eea; font-weight: bold;">
+                                    <option value="png">PNG (无损)</option>
+                                    <option value="jpg">JPG (压缩)</option>
+                                    <option value="webp">WebP (高效)</option>
+                                </select>
+                            </div>
+
+                            <button class="btn" id="saveBtn" disabled>💾 保存编辑后的图片</button>
+                            <button class="btn" id="saveOriginalBtn" disabled>📥 保存原图</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="canvas-container">
+                    <div class="canvas-wrapper" id="canvasWrapper">
+                        <canvas id="canvas"></canvas>
+                        <canvas id="maskCanvas"></canvas>
+                        <div class="brush-cursor" id="brushCursor"></div>
+                        <div class="preview-mode-indicator">预览模式</div>
+                    </div>
+
+                    <div class="zoom-controls">
+                        <button class="zoom-btn" id="zoomInBtn" disabled title="放大">+</button>
+                        <button class="zoom-btn" id="zoomOutBtn" disabled title="缩小">-</button>
+                        <button class="zoom-btn" id="zoomResetBtn" disabled title="重置缩放">↻</button>
+                        <div class="zoom-info" id="zoomInfo">100%</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -532,6 +663,11 @@
                 this.initEventListeners();
                 this.updateBrushCursor();
                 this.updateZoomDisplay();
+
+                // 新增批量管理相关属性
+                this.imageFiles = []; // 存储所有上传的图片文件
+                this.currentImageIndex = -1; // 当前选中的图片索引
+                this.selectedImages = new Set(); // 存储选中的图片索引
             }
 
             initEventListeners() {
@@ -660,6 +796,89 @@
                 this.canvasWrapper.addEventListener('mouseleave', () => {
                     this.stopDragging();
                 });
+
+                // 批量上传事件
+                document.getElementById('batchImageInput').addEventListener('change', (e) => {
+                    this.handleBatchUpload(e.target.files);
+                });
+            }
+
+            // 新增方法
+            handleBatchUpload(files) {
+                Array.from(files).forEach((file, index) => {
+                    const fileIndex = this.imageFiles.length;
+                    this.imageFiles.push(file);
+                    this.createImageListItem(file, fileIndex);
+                });
+
+                if (files.length > 0) {
+                    this.showStatus(`成功添加 ${files.length} 张图片`, 'success');
+                }
+            }
+
+            createImageListItem(file, index) {
+                const imageList = document.getElementById('imageList');
+
+                // 首次添加时清除"暂无图片"提示
+                if (imageList.children.length === 1 && imageList.children[0].style.textAlign === 'center') {
+                    imageList.innerHTML = '';
+                }
+
+                const item = document.createElement('div');
+                item.className = 'image-item';
+                item.dataset.index = index;
+
+                // 创建缩略图
+                const img = document.createElement('img');
+                img.className = 'image-thumbnail';
+                img.src = URL.createObjectURL(file);
+
+                // 创建复选框
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.addEventListener('change', (e) => {
+                    if (e.target.checked) {
+                        this.selectedImages.add(index);
+                        item.classList.add('selected');
+                    } else {
+                        this.selectedImages.delete(index);
+                        item.classList.remove('selected');
+                    }
+                });
+
+                // 创建文件名显示
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'image-name';
+                nameSpan.textContent = file.name;
+                nameSpan.title = file.name; // 悬停显示完整文件名
+
+                // 点击选择图片进行编辑
+                item.addEventListener('click', (e) => {
+                    if (e.target.type !== 'checkbox') {
+                        this.selectImageForEdit(index);
+                    }
+                });
+
+                item.appendChild(checkbox);
+                item.appendChild(img);
+                item.appendChild(nameSpan);
+                imageList.appendChild(item);
+            }
+
+            selectImageForEdit(index) {
+                if (index >= 0 && index < this.imageFiles.length) {
+                    this.currentImageIndex = index;
+                    this.loadImage(this.imageFiles[index]);
+
+                    // 更新UI显示当前选中的图片
+                    document.querySelectorAll('.image-item').forEach((item, i) => {
+                        if (i === index) {
+                            item.style.border = '2px solid #667eea';
+                        } else {
+                            item.style.border = 'none';
+                        }
+                    });
+                }
             }
 
             // 新增：统一处理应用按钮的点击事件
