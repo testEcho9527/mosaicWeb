@@ -70,6 +70,15 @@
             text-align: center;
         }
 
+        .horizontal-buttons {
+            display: flex;
+            gap: 5px;
+        }
+
+        .horizontal-buttons .batch-upload-btn {
+            flex: 1;
+        }
+
         .batch-upload-btn {
             width: 100%;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -514,6 +523,20 @@
                     style="background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%); display: none;">
                     🗑️ 删除选中图片
                 </button>
+
+
+                <div id="selectionControls" style="display: none; margin-bottom: 10px;">
+                    <div style="display: flex; gap: 5px;">
+                        <button class="batch-upload-btn" id="selectAllBtn"
+                            style="background: linear-gradient(135deg, #4caf50 0%, #45a049 100%); flex: 1;">
+                            ☑️ 全选
+                        </button>
+                        <button class="batch-upload-btn" id="invertSelectionBtn"
+                            style="background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%); flex: 1;">
+                            🔄 反选
+                        </button>
+                    </div>
+                </div>
                 <div class="image-list" id="imageList">
                     <div style="text-align: center; color: #999; padding: 20px;">
                         暂无图片
@@ -809,6 +832,14 @@
                 document.getElementById('batchDeleteBtn').addEventListener('click', () => {
                     this.handleBatchDelete();
                 });
+                // 全选事件
+                document.getElementById('selectAllBtn').addEventListener('click', () => {
+                    this.selectAllImages();
+                });
+                // 反选事件
+                document.getElementById('invertSelectionBtn').addEventListener('click', () => {
+                    this.invertSelection();
+                });
             }
 
             // 新增方法
@@ -821,6 +852,8 @@
 
                 if (files.length > 0) {
                     this.showStatus(`成功添加 ${files.length} 张图片`, 'success');
+                    // 添加这一行：
+                    this.updateDeleteButtonVisibility(); // 确保选择按钮显示
                 }
             }
 
@@ -872,6 +905,8 @@
                 item.appendChild(img);
                 item.appendChild(nameSpan);
                 imageList.appendChild(item);
+
+                this.updateDeleteButtonVisibility(); // 确保按钮状态更新
             }
 
             selectImageForEdit(index) {
@@ -893,11 +928,56 @@
             // 更新删除按钮可见性
             updateDeleteButtonVisibility() {
                 const deleteBtn = document.getElementById('batchDeleteBtn');
+                const selectionControls = document.getElementById('selectionControls');
+
                 if (this.selectedImages.size > 0) {
                     deleteBtn.style.display = 'block';
                 } else {
                     deleteBtn.style.display = 'none';
                 }
+
+                // 当有图片时显示选择控制按钮
+                if (this.imageFiles.length > 0) {
+                    selectionControls.style.display = 'block';
+                } else {
+                    selectionControls.style.display = 'none';
+                }
+            }
+
+            // 全选图片
+            selectAllImages() {
+                const checkboxes = document.querySelectorAll('.image-item input[type="checkbox"]');
+                checkboxes.forEach((checkbox, index) => {
+                    if (!checkbox.checked) {
+                        checkbox.checked = true;
+                        this.selectedImages.add(index);
+                        checkbox.closest('.image-item').classList.add('selected');
+                    }
+                });
+                this.updateDeleteButtonVisibility();
+
+                if (this.imageFiles.length > 0) {
+                    this.showStatus(`已全选 ${this.imageFiles.length} 张图片`, 'success');
+                }
+            }
+
+            // 反选图片
+            invertSelection() {
+                const checkboxes = document.querySelectorAll('.image-item input[type="checkbox"]');
+                checkboxes.forEach((checkbox, index) => {
+                    if (checkbox.checked) {
+                        checkbox.checked = false;
+                        this.selectedImages.delete(index);
+                        checkbox.closest('.image-item').classList.remove('selected');
+                    } else {
+                        checkbox.checked = true;
+                        this.selectedImages.add(index);
+                        checkbox.closest('.image-item').classList.add('selected');
+                    }
+                });
+                this.updateDeleteButtonVisibility();
+
+                this.showStatus(`已反选，当前选中 ${this.selectedImages.size} 张图片`, 'success');
             }
 
             // 处理批量删除
@@ -943,6 +1023,8 @@
                 if (this.imageFiles.length === 0) {
                     const imageList = document.getElementById('imageList');
                     imageList.innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">暂无图片</div>';
+                    // 清空input值，确保下次选择相同文件时也能触发change事件
+                    document.getElementById('batchImageInput').value = '';
                 }
             }
 
